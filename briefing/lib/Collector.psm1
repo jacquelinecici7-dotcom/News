@@ -387,6 +387,12 @@ function ConvertFrom-MarkdownLite {
     foreach ($raw in $lines) {
         $line = $raw.TrimEnd()
 
+        # Pass through raw HTML tags (details/summary) without encoding.
+        if ($line -match '^\s*<details' -or $line -match '^\s*</details' -or $line -match '^\s*<summary' -or $line -match '^\s*</summary') {
+            [void]$sb.AppendLine($line)
+            continue
+        }
+
         if ($line -match '^\s*```') {
             if ($inCode) { [void]$sb.AppendLine('</pre>'); $inCode = $false }
             else {
@@ -509,7 +515,7 @@ function Publish-GitHubPages {
     try {
         [void]$client.DefaultRequestHeaders.Accept.Add([System.Net.Http.Headers.MediaTypeWithQualityHeaderValue]::new('application/vnd.github+json'))
         [void]$client.DefaultRequestHeaders.TryAddWithoutValidation('X-GitHub-Api-Version', '2022-11-28')
-        [void]$client.DefaultRequestHeaders.TryAddWithoutValidation('User-Agent', 'briefing-deployer')
+        $client.DefaultRequestHeaders.UserAgent.ParseAdd('briefing-deployer/1.0')
         $client.DefaultRequestHeaders.Authorization =
             [System.Net.Http.Headers.AuthenticationHeaderValue]::new('Bearer', $token)
 
@@ -652,6 +658,10 @@ blockquote{margin:10px 0;padding:9px 13px;background:#f7f9fc;border-left:3px sol
 .summary li{margin:4px 0}
 .summary .latest{margin-top:10px;padding-top:10px;border-top:1px dashed #cfdcef}
 .foot{margin-top:40px;padding-top:14px;border-top:1px solid #e2e6ea;color:#888;font-size:12.5px}
+details{margin:16px 0;padding:12px 16px;background:#f8f9fa;border:1px solid #e0e5ec;border-radius:6px}
+details summary{cursor:pointer;font-weight:600;color:#1a3f7a;font-size:15px}
+details summary:hover{color:#1a56c4}
+details[open]{padding-bottom:16px}
 .section{margin:32px 0;padding:22px 26px 18px;border-radius:10px;border:1px solid;border-left:6px solid;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
 .section h1{margin-top:0;font-size:22px;padding-bottom:8px}
 .section h2{font-size:18px;padding-left:8px;border-left-width:3px;margin-top:24px}
@@ -682,6 +692,9 @@ blockquote{margin:10px 0;padding:9px 13px;background:#f7f9fc;border-left:3px sol
  code{background:#242830}
  blockquote{background:#1c1f25;color:#b8bec6}
  .cont{color:#a8aeb6}
+ details{background:#1c1f25;border-color:#333941}
+ details summary{color:#8fb6f0}
+ details summary:hover{color:#a8c8f0}
 .banner.warn{background:#3a2c14;border-color:#7a5a20;color:#f0c380}
   .banner.info{background:#152436;border-color:#2d5480;color:#9cc4ee}
   .banner.ok{background:#152a14;border-color:#3d6a30;color:#9bd49b}
