@@ -1,0 +1,58 @@
+{
+  "id": "finance",
+  "title": "全球金融资讯",
+  "promptFile": "prompts/finance.md",
+  "freshnessHours": 30,
+  "maxItemsPerSource": 10,
+
+  "quotes": [
+    { "symbol": "000001.SS",  "label": "上证指数",             "group": "中国股市", "suffix": "" },
+    { "symbol": "399001.SZ",  "label": "深证成指",             "group": "中国股市", "suffix": "" },
+    { "symbol": "^HSI",       "label": "恒生指数",             "group": "中国股市", "suffix": "" },
+    { "symbol": "^GSPC",      "label": "标普500",              "group": "美国股市", "suffix": "" },
+    { "symbol": "^DJI",       "label": "道琼斯工业指数",       "group": "美国股市", "suffix": "" },
+    { "symbol": "^IXIC",      "label": "纳斯达克综合指数",     "group": "美国股市", "suffix": "" },
+    { "symbol": "^TNX",       "label": "美国10年期国债收益率", "group": "利率与债券", "suffix": "%" },
+    { "symbol": "^FVX",       "label": "美国5年期国债收益率",  "group": "利率与债券", "suffix": "%" },
+    { "symbol": "DX-Y.NYB",   "label": "美元指数",             "group": "外汇", "suffix": "" },
+    { "symbol": "CNY=X",      "label": "美元/离岸人民币",      "group": "外汇", "suffix": "" },
+    { "symbol": "EURUSD=X",   "label": "欧元/美元",            "group": "外汇", "suffix": "" },
+    { "symbol": "JPY=X",      "label": "美元/日元",            "group": "外汇", "suffix": "" },
+    { "symbol": "BZ=F",       "label": "布伦特原油",           "group": "大宗商品", "suffix": " 美元/桶" },
+    { "symbol": "CL=F",       "label": "WTI原油",              "group": "大宗商品", "suffix": " 美元/桶" },
+    { "symbol": "GC=F",       "label": "黄金",                 "group": "大宗商品", "suffix": " 美元/盎司" },
+    { "symbol": "HG=F",       "label": "铜",                   "group": "大宗商品", "suffix": " 美元/磅" }
+  ],
+
+  "feeds": [
+    { "name": "香港电台财经",       "category": "亚洲市场", "url": "https://rthk9.rthk.hk/rthk/news/rss/c_expressnews_cfinance.xml", "include": "" },
+    { "name": "明报财经",           "category": "亚洲市场", "url": "https://news.mingpao.com/rss/pns/s00004.xml", "include": "" },
+    { "name": "明报即时财经",       "category": "亚洲市场", "url": "https://news.mingpao.com/rss/ins/s00002.xml", "include": "" },
+    { "name": "MarketWatch头条",    "category": "欧美市场", "url": "https://feeds.content.dowjones.io/public/rss/mw_topstories", "include": "" },
+    { "name": "Yahoo Finance",      "category": "欧美市场", "url": "https://finance.yahoo.com/news/rssindex", "include": "" },
+    { "name": "CNBC财经",           "category": "欧美市场", "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html", "include": "" }
+  ],
+
+  "pages": [
+    {
+      "name": "国家统计局·最新发布",
+      "category": "中国宏观（第一方来源）",
+      "url": "https://www.stats.gov.cn/sj/zxfb/",
+      "hrefFilter": "t\\d{8}_\\d+\\.html",
+      "dateFromHref": "t(\\d{8})_",
+      "include": "",
+      "max": 15
+    },
+    {
+      "name": "中国人民银行·新闻发布",
+      "category": "中国宏观（第一方来源）",
+      "url": "http://www.pbc.gov.cn/goutongjiaoliu/113456/113469/index.html",
+      "hrefFilter": "goutongjiaoliu/\\d+/\\d+/\\d{14,}/index\\.html",
+      "dateFromHref": "/(\\d{14})\\d*/index\\.html",
+      "include": "",
+      "max": 15
+    }
+  ],
+
+  "datasets": []
+}
