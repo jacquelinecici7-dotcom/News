@@ -1,0 +1,72 @@
+{
+  "id": "international",
+  "title": "国际视野",
+  "freshnessHours": 36,
+  "maxItemsPerSource": 4,
+  "promptFile": "prompts/international.md",
+  "feeds": [
+    {
+      "name": "BBC 国际",
+      "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "category": "国际政经",
+      "include": ""
+    },
+    {
+      "name": "路透社 国际",
+      "url": "https://feeds.reuters.com/Reuters/worldNews",
+      "category": "国际政经",
+      "include": ""
+    },
+    {
+      "name": "卫报 世界",
+      "url": "https://www.theguardian.com/world/rss",
+      "category": "国际政经",
+      "include": ""
+    },
+    {
+      "name": "BBC 科技",
+      "url": "https://feeds.bbci.co.uk/news/technology/rss.xml",
+      "category": "科技与AI",
+      "include": ""
+    },
+    {
+      "name": "Ars Technica",
+      "url": "https://feeds.arstechnica.com/arstechnica/index",
+      "category": "科技与AI",
+      "include": ""
+    },
+    {
+      "name": "Wired",
+      "url": "https://www.wired.com/feed/rss",
+      "category": "科技与AI",
+      "include": ""
+    },
+    {
+      "name": "Nature",
+      "url": "https://www.nature.com/nature.rss",
+      "category": "科学与健康",
+      "include": ""
+    },
+    {
+      "name": "Science Daily",
+      "url": "https://www.sciencedaily.com/rss/top.xml",
+      "category": "科学与健康",
+      "include": ""
+    },
+    {
+      "name": "BBC 文化",
+      "url": "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml",
+      "category": "文化艺术",
+      "include": ""
+    },
+    {
+      "name": "卫报 文化",
+      "url": "https://www.theguardian.com/culture/rss",
+      "category": "文化艺术",
+      "include": ""
+    }
+  ],
+  "pages": [],
+  "datasets": [],
+  "quotes": []
+}
