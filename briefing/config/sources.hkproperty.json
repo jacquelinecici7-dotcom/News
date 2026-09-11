@@ -1,0 +1,92 @@
+{
+  "id": "hkproperty",
+  "title": "香港楼市资讯",
+  "promptFile": "prompts/hkproperty.md",
+  "freshnessHours": 30,
+  "maxItemsPerSource": 12,
+
+  "quotes": [
+    { "symbol": "^HSI",     "label": "恒生指数",         "group": "参考行情", "suffix": "" },
+    { "symbol": "0016.HK",  "label": "新鸿基地产",       "group": "发展商股价", "suffix": " 港元" },
+    { "symbol": "0012.HK",  "label": "恒基地产",         "group": "发展商股价", "suffix": " 港元" },
+    { "symbol": "0001.HK",  "label": "长和",             "group": "发展商股价", "suffix": " 港元" },
+    { "symbol": "0083.HK",  "label": "信和置业",         "group": "发展商股价", "suffix": " 港元" },
+    { "symbol": "1109.HK",  "label": "华润置地",         "group": "发展商股价", "suffix": " 港元" },
+    { "symbol": "HKD=X",    "label": "美元/港元",        "group": "汇率与利率", "suffix": "" }
+  ],
+
+  "feeds": [
+    {
+      "name": "香港政府新闻公报",
+      "category": "官方公布（第一方来源）",
+      "url": "https://www.info.gov.hk/gia/rss/general_zh.xml",
+      "include": "樓價|楼价|租金|物業|物业|住宅|按揭|地產|地产|賣地|卖地|土地|房屋|居屋|公屋|印花稅|印花税|差餉|差饷|估價|估价|註冊處|注册处|新盤|新盘|地政|規劃|规划|市區重建|市区重建|北部都會區|北部都会区|寫字樓|写字楼|商舖|商铺|工廈|工厦|發展商|发展商|地價|地价|樓市|楼市|置業|置业|金管局|業主|业主|清拆|招標|招标|補地價|补地价|地皮|落成|供應|供应|強拍|强拍|收樓|收楼|建屋|樓宇|楼宇"
+    },
+    {
+      "name": "香港电台·本地",
+      "category": "市场报道",
+      "url": "https://rthk9.rthk.hk/rthk/news/rss/c_expressnews_clocal.xml",
+      "include": "樓價|楼价|租金|物業|物业|住宅|按揭|地產|地产|賣地|卖地|房屋|居屋|公屋|印花稅|印花税|差餉|差饷|新盤|新盘|樓市|楼市|地皮|屋苑|發展商|发展商|置業|置业|北部都會區|北部都会区"
+    },
+    {
+      "name": "香港电台·财经",
+      "category": "市场报道",
+      "url": "https://rthk9.rthk.hk/rthk/news/rss/c_expressnews_cfinance.xml",
+      "include": "樓價|楼价|租金|物業|物业|住宅|按揭|地產|地产|賣地|卖地|房屋|新盤|新盘|樓市|楼市|地皮|屋苑|發展商|发展商|寫字樓|写字楼|商舖|商铺|工廈|工厦"
+    },
+    {
+      "name": "明报即时地产",
+      "category": "市场报道",
+      "url": "https://news.mingpao.com/rss/ins/s00003.xml",
+      "include": ""
+    }
+  ],
+
+  "pages": [
+    {
+      "name": "差饷物业估价署·物业市场统计",
+      "category": "官方统计入口",
+      "url": "https://www.rvd.gov.hk/tc/publications/property_market_statistics.html",
+      "hrefFilter": "\\.pdf$|statistics",
+      "dateFromHref": "",
+      "include": "",
+      "max": 12
+    },
+    {
+      "name": "土地注册处·每月统计",
+      "category": "官方统计入口",
+      "url": "https://www.landreg.gov.hk/chs/monthly/monthly.htm",
+      "hrefFilter": "monthly|\\.pdf$|statistic",
+      "dateFromHref": "",
+      "include": "",
+      "max": 12
+    }
+  ],
+
+  "datasets": [
+    {
+      "name": "差估署·私人住宅售价指数（全港，按类别）",
+      "category": "官方指数",
+      "url": "https://www.rvd.gov.hk/datagovhk/1.4M.csv",
+      "rows": 6,
+      "headerLine": 1,
+      "note": "最后一列 All Classes 为全港整体售价指数；标注 P 者为临时数字，其后可能修订。"
+    },
+    {
+      "name": "差估署·私人住宅租金指数（全港，按类别）",
+      "category": "官方指数",
+      "url": "https://www.rvd.gov.hk/datagovhk/1.3M.csv",
+      "rows": 6,
+      "headerLine": 1,
+      "note": "最后一列 All Classes 为全港整体租金指数；标注 P 者为临时数字。"
+    },
+    {
+      "name": "差估署·私人住宅平均售价（按类别）",
+      "category": "官方指数",
+      "url": "https://www.rvd.gov.hk/datagovhk/1.2M.csv",
+      "rows": 4,
+      "headerLine": 1,
+      "note": "单位为每平方米售价（港元）。"
+    }
+  ]
+}
