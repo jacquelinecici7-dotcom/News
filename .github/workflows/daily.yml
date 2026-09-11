@@ -24,11 +24,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          # Need history for the dedup state diffs to make sense.
           fetch-depth: 0
-
-      - name: Install PowerShell Core
-        uses: microsoft/powershell@v1
 
       - name: Run briefing collector
         env:
@@ -38,8 +34,6 @@ jobs:
         shell: pwsh
         run: |
           pwsh -NoProfile -File briefing/Invoke-Briefing.ps1 -Merge -Force -GitHubActions 2>&1
-          # Don't fail the job just because the script's last exit code isn't 0;
-          # we still want to commit whatever HTML got generated for debugging.
           echo "::notice::script exit code: $LASTEXITCODE"
 
       - name: Commit and push
