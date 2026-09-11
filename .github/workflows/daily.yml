@@ -1,10 +1,8 @@
 name: Daily Briefing
 
 on:
-  # 8am Beijing = 0:00 UTC (China Standard Time, no DST).
   schedule:
     - cron: '0 0 * * *'
-  # Manual trigger for ad-hoc runs / debugging.
   workflow_dispatch:
 
 permissions:
@@ -19,7 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
