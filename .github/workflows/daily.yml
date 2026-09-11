@@ -23,9 +23,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Install PowerShell Core
-        uses: microsoft/powershell@v1
-
       - name: Run briefing collector
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
