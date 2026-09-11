@@ -1,0 +1,49 @@
+name: Daily Briefing
+
+on:
+  # 8am Beijing = 0:00 UTC (China Standard Time, no DST).
+  schedule:
+    - cron: '0 0 * * *'
+  # Manual trigger for ad-hoc runs / debugging.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-briefing
+  cancel-in-progress: false
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Install PowerShell Core
+        uses: microsoft/powershell@v1
+
+      - name: Run briefing collector
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File briefing/Invoke-Briefing.ps1 -Merge -Force -GitHubActions 2>&1
+          echo "::notice::script exit code: $LASTEXITCODE"
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          git config user.name "briefing-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add state/ 今日资讯.html
+          if git diff --cached --quiet; then
+            echo "no changes to commit"
+          else
+            git commit -m "briefing: $(date -u +%Y-%m-%d)"
+            git push
+          fi
