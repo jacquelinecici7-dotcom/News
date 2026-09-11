@@ -1,0 +1,18 @@
+{
+  "_说明": "GitHub Pages 推送配置。把 token 放进 state/github.token（注意 gitignore），这里只放公开信息。",
+
+  "owner": "jacquelinecici7-dotcom",
+  "_owner": "GitHub 用户名",
+
+  "repo": "News",
+  "_repo": "仓库名。需要在 GitHub 上先创建并开启 Pages（Settings → Pages → Source: Deploy from a branch → Branch: main）",
+
+  "branch": "main",
+  "_branch": "Pages 部署的分支，默认 main",
+
+  "pathPrefix": "",
+  "_pathPrefix": "如果 Pages 源是 docs/ 或别的子目录，填路径前缀，例如 'docs'。空字符串=根目录",
+
+  "publicBaseUrl": "https://jacquelinecici7-dotcom.github.io/News/",
+  "_publicBaseUrl": "手机收藏的固定网址。改用户名/仓库时这里也要同步改"
+}
