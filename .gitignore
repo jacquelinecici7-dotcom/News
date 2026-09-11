@@ -1,0 +1,18 @@
+# Per-day archives — only the stable 今日资讯.html at repo root is published.
+out/
+!今日资讯.html
+
+# Logs are noisy and not needed for the URL.
+logs/
+
+# Token must never be committed. Keep it in state/ on the runner only.
+state/github.token
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor
+.vs/
+.idea/
+*.swp
