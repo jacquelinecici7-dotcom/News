@@ -339,6 +339,8 @@ function Format-CompactDigest {
     # day doesn't drown the reader; total count is still surfaced in the summary.
     add '## 新增资讯'
     add ''
+    add '<details><summary>📰 完整新闻列表（点击展开）</summary>'
+    add ''
     if ($Result.Groups.Count -eq 0) {
         add '_本次窗口内无新增条目。_'
         add ''
@@ -366,6 +368,8 @@ function Format-CompactDigest {
             add ''
         }
     }
+    add '</details>'
+    add ''
 
     # Small status footer — full table is noise for a daily read.
     add '## 抓取状态'
@@ -570,6 +574,67 @@ function Invoke-Synthesis {
     $resp = Invoke-RestMethod -Uri 'https://api.anthropic.com/v1/messages' -Method Post `
         -Headers $headers -ContentType 'application/json' -Body $bytes -TimeoutSec 300
     return (@($resp.content | Where-Object { $_.type -eq 'text' } | ForEach-Object { $_.text }) -join "`n")
+}
+
+function Invoke-SynthesisOpenAI {
+    <#
+        Generic OpenAI-compatible chat completions client.
+        Works with DeepSeek, Groq, OpenRouter, etc.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Pack,
+        [Parameter(Mandatory)][string]$ApiKey,
+        [Parameter(Mandatory)][string]$ApiUrl,
+        [string]$Model = 'deepseek-chat',
+        [int]$MaxTokens = 16000,
+        [double]$Temperature = 0.3
+    )
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $body = @{
+        model = $Model
+        max_tokens = $MaxTokens
+        temperature = $Temperature
+        messages = @(@{ role = 'user'; content = $Pack })
+    }
+    $json = $body | ConvertTo-Json -Depth 8 -Compress
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+    $headers = @{
+        'Authorization' = "Bearer $ApiKey"
+        'Content-Type'  = 'application/json'
+    }
+    $resp = Invoke-RestMethod -Uri $ApiUrl -Method Post `
+        -Headers $headers -Body $bytes -TimeoutSec 300
+    return $resp.choices[0].message.content
+}
+
+function Invoke-SynthesisGemini {
+    <#
+        Calls Google Gemini API (native format, not OpenAI-compatible).
+        Free tier: 15 RPM / 1M TPM for gemini-2.0-flash.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Pack,
+        [Parameter(Mandatory)][string]$ApiKey,
+        [string]$Model = 'gemini-2.0-flash',
+        [int]$MaxTokens = 16000
+    )
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $body = @{
+        contents = @(
+            @{ parts = @(@{ text = $Pack }) }
+        )
+        generationConfig = @{
+            maxOutputTokens = $MaxTokens
+            temperature = 0.3
+        }
+    }
+    $json = $body | ConvertTo-Json -Depth 8 -Compress
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/${Model}:generateContent?key=$ApiKey"
+    $headers = @{ 'Content-Type' = 'application/json' }
+    $resp = Invoke-RestMethod -Uri $url -Method Post `
+        -Headers $headers -Body $bytes -TimeoutSec 300
+    return $resp.candidates[0].content.parts[0].text
 }
 
 # --------------------------------------------------------------- deliver ----
@@ -777,7 +842,7 @@ $dayDir = Join-Path $OutputRoot $RunAt.ToString('yyyy-MM-dd')
 $delivery = Read-Json -Path (Join-Path $root 'config\delivery.json')
 if (-not $delivery) { $delivery = [pscustomobject]@{ desktopCopy = $true; toast = $true; autoOpen = $true } }
 
-$briefs = if ($Brief -eq 'all') { @('hkproperty', 'finance') } else { @($Brief) }
+$briefs = if ($Brief -eq 'all') { @('hkproperty', 'finance', 'international') } else { @($Brief) }
 $mergedBriefs = New-Object System.Collections.ArrayList
 
 foreach ($id in $briefs) {
@@ -819,12 +884,52 @@ foreach ($id in $briefs) {
     Write-Log ("采集完成：{0} — 新增 {1} 条，来源失败 {2} 个" -f $cfg.title, $newItems, $failCount)
 
     # -- synthesis (optional) ---------------------------------------------
+    # Priority: GEMINI (free) > DEEPSEEK (cheap) > GROQ (may be blocked) > ANTHROPIC (paid) > no synthesis.
     $briefingText = ''
-    $apiKey = $env:ANTHROPIC_API_KEY
-    if (-not $NoSynthesis -and $apiKey) {
+    $geminiKey = $env:GEMINI_API_KEY
+    $deepseekKey = $env:DEEPSEEK_API_KEY
+    $groqKey = $env:GROQ_API_KEY
+    $anthropicKey = $env:ANTHROPIC_API_KEY
+    if (-not $NoSynthesis -and $geminiKey) {
+        try {
+            Write-Log "调用 Google Gemini API 成稿（gemini-2.0-flash）…"
+            $briefingText = Invoke-SynthesisGemini -Pack $pack -ApiKey $geminiKey
+            $bPath = Join-Path $outDir 'briefing.md'
+            Save-Archive -Path $bPath
+            Write-Utf8 -Path $bPath -Content $briefingText
+            Write-Log ("成稿完成 -> {0}" -f $bPath)
+        } catch {
+            $briefingText = ''
+            Write-Log ("成稿失败，改用原始素材送达：{0}" -f $_.Exception.Message) 'ERROR'
+        }
+    } elseif (-not $NoSynthesis -and $deepseekKey) {
+        try {
+            Write-Log "调用 DeepSeek API 成稿（deepseek-chat）…"
+            $briefingText = Invoke-SynthesisOpenAI -Pack $pack -ApiKey $deepseekKey -ApiUrl 'https://api.deepseek.com/chat/completions' -Model 'deepseek-chat'
+            $bPath = Join-Path $outDir 'briefing.md'
+            Save-Archive -Path $bPath
+            Write-Utf8 -Path $bPath -Content $briefingText
+            Write-Log ("成稿完成 -> {0}" -f $bPath)
+        } catch {
+            $briefingText = ''
+            Write-Log ("成稿失败，改用原始素材送达：{0}" -f $_.Exception.Message) 'ERROR'
+        }
+    } elseif (-not $NoSynthesis -and $groqKey) {
+        try {
+            Write-Log "调用 Groq API 成稿（llama-3.3-70b-versatile）…"
+            $briefingText = Invoke-SynthesisOpenAI -Pack $pack -ApiKey $groqKey -ApiUrl 'https://api.groq.com/openai/v1/chat/completions' -Model 'llama-3.3-70b-versatile'
+            $bPath = Join-Path $outDir 'briefing.md'
+            Save-Archive -Path $bPath
+            Write-Utf8 -Path $bPath -Content $briefingText
+            Write-Log ("成稿完成 -> {0}" -f $bPath)
+        } catch {
+            $briefingText = ''
+            Write-Log ("成稿失败，改用原始素材送达：{0}" -f $_.Exception.Message) 'ERROR'
+        }
+    } elseif (-not $NoSynthesis -and $anthropicKey) {
         try {
             Write-Log ("调用 Anthropic API 成稿（{0}）…" -f $Model)
-            $briefingText = Invoke-Synthesis -Pack $pack -ModelName $Model -ApiKey $apiKey
+            $briefingText = Invoke-Synthesis -Pack $pack -ModelName $Model -ApiKey $anthropicKey
             $bPath = Join-Path $outDir 'briefing.md'
             Save-Archive -Path $bPath
             Write-Utf8 -Path $bPath -Content $briefingText
@@ -834,7 +939,7 @@ foreach ($id in $briefs) {
             Write-Log ("成稿失败，改用原始素材送达：{0}" -f $_.Exception.Message) 'ERROR'
         }
     } elseif (-not $NoSynthesis) {
-        Write-Log '未设置 ANTHROPIC_API_KEY，本次送达原始素材汇总。'
+        Write-Log '未设置任何 AI API KEY（GEMINI/DEEPSEEK/GROQ/ANTHROPIC），本次送达原始素材汇总。'
     }
 
     # -- deliver -----------------------------------------------------------
