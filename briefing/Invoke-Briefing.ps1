@@ -7,13 +7,19 @@
 
     Pipeline:
       collect -> pack.md (source material + writing prompt)
-              -> briefing.md   (model-written, only when ANTHROPIC_API_KEY is set)
+              -> briefing.md   (model-written, only when AI API key is set)
               -> 今日资讯.html  (always produced; delivered to the Desktop + toast)
 
     The delivered document never depends on the model being available: without a key
     it contains the mechanically assembled digest, clearly labelled as raw material.
     With a key the model-written briefing goes on top and the digest becomes an
     appendix, so the sources behind every claim stay visible.
+
+    Supported AI providers (checked in order):
+      - GEMINI_API_KEY      (free tier, Gemini API)
+      - DEEPSEEK_API_KEY    (DeepSeek API, recommended)
+      - GROQ_API_KEY        (Groq API, may be blocked in some regions)
+      - ANTHROPIC_API_KEY   (Claude, paid)
 
 .EXAMPLE
     .\Invoke-Briefing.ps1
@@ -679,7 +685,7 @@ function Publish-Briefing {
         $banner += '<div class="banner warn"><b>注意：</b>本次有 ' + $failed.Count + ' 个来源抓取失败（' + [System.Net.WebUtility]::HtmlEncode((($failed | ForEach-Object { $_.Name }) -join '、')) + '），相关内容可能缺失。</div>'
     }
     if (-not $BriefingText) {
-        $banner += '<div class="banner info">当前为<b>自动汇总的原始素材</b>，未经模型撰写成稿。设置环境变量 <code>ANTHROPIC_API_KEY</code> 后，这里会自动换成按模板写好的简报。</div>'
+        $banner += '<div class="banner info">当前为<b>自动汇总的原始素材</b>，未经模型撰写成稿。设置环境变量 <code>DEEPSEEK_API_KEY</code> 后，这里会自动换成按模板写好的简报。</div>'
     }
 
     $md = if ($BriefingText) {
@@ -784,7 +790,7 @@ function Publish-MergedBriefing {
     }
     $hasAnyBriefing = @($Briefs | Where-Object { $_.BriefingText }).Count -gt 0
     if (-not $hasAnyBriefing) {
-        $banner += '<div class="banner info">当前为<b>自动汇总的原始素材</b>，未经模型撰写成稿。设置环境变量 <code>ANTHROPIC_API_KEY</code> 后，各版块会自动换成按模板写好的简报。</div>'
+        $banner += '<div class="banner info">当前为<b>自动汇总的原始素材</b>，未经模型撰写成稿。设置环境变量 <code>DEEPSEEK_API_KEY</code> 后，各版块会自动换成按模板写好的简报。</div>'
     }
 
     # Build aggregated Result-like object for the combined summary box.
@@ -890,6 +896,11 @@ foreach ($id in $briefs) {
     $deepseekKey = $env:DEEPSEEK_API_KEY
     $groqKey = $env:GROQ_API_KEY
     $anthropicKey = $env:ANTHROPIC_API_KEY
+    Write-Log ("API keys detected: GEMINI={0}, DEEPSEEK={1}, GROQ={2}, ANTHROPIC={3}" -f `
+        $(if ($geminiKey) { 'YES' } else { 'NO' }), `
+        $(if ($deepseekKey) { 'YES' } else { 'NO' }), `
+        $(if ($groqKey) { 'YES' } else { 'NO' }), `
+        $(if ($anthropicKey) { 'YES' } else { 'NO' }))
     if (-not $NoSynthesis -and $geminiKey) {
         try {
             Write-Log "调用 Google Gemini API 成稿（gemini-2.0-flash）…"
