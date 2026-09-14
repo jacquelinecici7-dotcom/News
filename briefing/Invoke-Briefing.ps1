@@ -28,7 +28,7 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('finance', 'hkproperty', 'all')]
+    [ValidateSet('finance', 'hkproperty', 'international', 'all')]
     [string]$Brief = 'all',
 
     [string]$OutputRoot,
@@ -345,6 +345,29 @@ function Format-CompactDigest {
         add ''
     }
 
+    # Keep first-party datasets available in the no-AI edition. They remain
+    # collapsed by default so the digest stays readable on mobile.
+    if (@($Result.Datasets).Count -gt 0) {
+        add '## 官方数据'
+        add ''
+        add '<details><summary>📊 最新官方数据行（点击展开）</summary>'
+        add ''
+        foreach ($d in @($Result.Datasets)) {
+            add ("### {0}" -f $d.Name)
+            add ''
+            if ($d.Url) { add ("[数据源]({0})" -f $d.Url) }
+            if ($d.Note) { add ("> {0}" -f $d.Note) }
+            add ''
+            add '```'
+            add $d.Header
+            foreach ($row in @($d.Rows)) { add $row }
+            add '```'
+            add ''
+        }
+        add '</details>'
+        add ''
+    }
+
     # News items, grouped by category. Capped to newest N per category so a busy
     # day doesn't drown the reader; total count is still surfaced in the summary.
     add '## 新增资讯'
@@ -408,14 +431,21 @@ function Format-CompactDigest {
     }
 
     # 2. 行情最大变动：哪个标的波动最大
-    $movers = @($Result.Quotes | Where-Object { $_.Ok -and $null -ne $_.ChangePct } | Sort-Object -Property @{Expression='ChangePct'; Descending=$true})
+    $movers = @($Result.Quotes | Where-Object { $_.Ok -and $null -ne $_.ChangePct })
     if ($movers.Count -gt 0) {
-        $top = $movers[0]; $bot = $movers[-1]
-        $topSign = if ([double]$top.ChangePct -gt 0) { '+' } else { '' }
-        $botSign = if ([double]$bot.ChangePct -gt 0) { '+' } else { '' }
-        add ('- **行情亮点**：本期涨幅最大的是 {0}（{1}{2}{3}），跌幅最大的是 {4}（{5}{6}{7}）。' -f `
-            $top.Label, $topSign, (Format-Number -Value $top.ChangePct), '%', `
-            $bot.Label, $botSign, (Format-Number -Value $bot.ChangePct), '%')
+        $top = $movers | Sort-Object -Property @{Expression={[double]$_.ChangePct}; Descending=$true} | Select-Object -First 1
+        $bot = $movers | Sort-Object -Property @{Expression={[double]$_.ChangePct}; Descending=$false} | Select-Object -First 1
+        $largest = $movers | Sort-Object -Property @{Expression={[math]::Abs([double]$_.ChangePct)}; Descending=$true} | Select-Object -First 1
+        if ([double]$top.ChangePct -gt 0 -and [double]$bot.ChangePct -lt 0) {
+            add ('- **行情亮点**：涨幅最大的是 {0}（+{1}%），跌幅最大的是 {2}（{3}%）。' -f `
+                $top.Label, (Format-Number -Value $top.ChangePct), $bot.Label, (Format-Number -Value $bot.ChangePct))
+        } elseif ([double]$top.ChangePct -le 0) {
+            add ('- **行情亮点**：本期可用报价全部下跌，波动最大的是 {0}（{1}%）。' -f $largest.Label, (Format-Number -Value $largest.ChangePct))
+        } elseif ([double]$bot.ChangePct -ge 0) {
+            add ('- **行情亮点**：本期可用报价全部上涨，波动最大的是 {0}（+{1}%）。' -f $largest.Label, (Format-Number -Value $largest.ChangePct))
+        } else {
+            add ('- **行情亮点**：波动最大的是 {0}（{1}%）。' -f $largest.Label, (Format-Number -Value $largest.ChangePct))
+        }
     }
 
     # 3. 本期一句话概括（按最大类别挑选代表）
