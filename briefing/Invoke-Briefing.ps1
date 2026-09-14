@@ -302,7 +302,11 @@ function Format-CompactDigest {
         category as one-line bullets with title + link + time; status is a small
         footer instead of a full table.
     #>
-    param($Result)
+    param(
+        $Result,
+        [int]$DefaultMaxPerCat = 10,
+        [hashtable]$CategoryLimits = @{}
+    )
 
     $cfg = $Result.Config
     $sb = New-Object System.Text.StringBuilder
@@ -351,21 +355,29 @@ function Format-CompactDigest {
         add '_本次窗口内无新增条目。_'
         add ''
     } else {
-        $maxPerCat = 10
+        $maxPerCat = $DefaultMaxPerCat
         foreach ($cat in $cats) {
             $items = @($Result.Groups | Where-Object { $_.Category -eq $cat } | ForEach-Object { $_.Items })
             if ($items.Count -eq 0) { continue }
             # Sort newest first so the cap keeps the freshest, not the oldest.
             $sorted = @($items | Sort-Object -Property Date -Descending)
-            $shown = $sorted | Select-Object -First $maxPerCat
+            $cap = if ($CategoryLimits.ContainsKey($cat)) { $CategoryLimits[$cat] } else { $maxPerCat }
+            $shown = $sorted | Select-Object -First $cap
             $total = $items.Count
             add ("### {0}（{1} 条 · 显示最新 {2} 条）" -f $cat, $total, $shown.Count)
             add ''
             foreach ($it in $shown) {
                 $d = if ($null -ne $it.Date) { $it.Date.ToString('MM-dd HH:mm') } else { '日期未知' }
-                $title = ($it.Title -replace '[\r\n]+', ' ').Trim()
-                $line = if ($it.Link) { '- [{0}]({1}) · {2}' -f $title, $it.Link, $d }
-                        else        { '- {0} · {1}' -f $title, $d }
+                # Prefer translated title for international briefings; show original underneath.
+                $displayTitle = if ($it.TranslatedTitle) {
+                    $title = ($it.TranslatedTitle -replace '[\r\n]+', ' ').Trim()
+                    $orig = ($it.Title -replace '[\r\n]+', ' ').Trim()
+                    if ($orig -ne $title) { "$title<br><small style=`"color:#888`">$orig</small>" } else { $title }
+                } else {
+                    ($it.Title -replace '[\r\n]+', ' ').Trim()
+                }
+                $line = if ($it.Link) { '- [{0}]({1}) · {2}' -f $displayTitle, $it.Link, $d }
+                        else        { '- {0} · {1}' -f $displayTitle, $d }
                 add $line
             }
             if ($total -gt $shown.Count) {
@@ -377,63 +389,56 @@ function Format-CompactDigest {
     add '</details>'
     add ''
 
-    # Small status footer — full table is noise for a daily read.
-    add '## 抓取状态'
-    add ''
-    add ('| 来源 | 结果 | 新增 |')
-    add ('|---|---|---|')
-    foreach ($s in $Result.Status) {
-        $icon = if ($s.State -eq 'OK') { '✓' } else { '✗' }
-        add ('| {0} | {1} | {2} |' -f (Format-Cell $s.Name), $icon, $s.Count)
-    }
-    add ''
     # 今日要点 — 自动汇总，不依赖模型。放在最末，让读者一眼收尾。
     add '## 今日要点'
+    add ''
+    add '> 以下 3 条为本期内容的自动总结（不依赖 AI 模型），根据本期采集到的资讯、行情、抓取状态归纳。'
     add ''
 
     # 1. 数据健康：来源全部 OK 还是有问题
     $okCount = @($Result.Status | Where-Object { $_.State -eq 'OK' }).Count
     $totalCount = @($Result.Status).Count
+    $failedNames = ($Result.Status | Where-Object { $_.State -ne 'OK' } | ForEach-Object { $_.Name }) -join '、'
     if ($okCount -eq $totalCount) {
-        add '- **数据健康**：本次 {0} 个来源全部抓取成功，可放心引用。' -f $totalCount
+        add '- **数据健康**：本期所有数据源均正常抓取，资料完整。'
+    } elseif ($okCount -eq 0) {
+        add '- **数据健康**：本期所有数据源均抓取失败（' + $failedNames + '），下方内容可能缺失或不可靠，建议参考其它渠道。'
     } else {
-        add ('- **数据健康**：本次 {0} 个来源中有 {1} 个失败（{2}），相关内容可能缺失。' -f $totalCount, ($totalCount - $okCount), (($Result.Status | Where-Object { $_.State -ne 'OK' } | ForEach-Object { $_.Name }) -join '、'))
+        add '- **数据健康**：本期 ' + $okCount + '/' + $totalCount + ' 个数据源正常，缺失：' + $failedNames + '。'
     }
 
     # 2. 行情最大变动：哪个标的波动最大
     $movers = @($Result.Quotes | Where-Object { $_.Ok -and $null -ne $_.ChangePct } | Sort-Object -Property @{Expression='ChangePct'; Descending=$true})
     if ($movers.Count -gt 0) {
         $top = $movers[0]; $bot = $movers[-1]
-        add ('- **行情异动**：今日最大涨幅 {0} {1}{2}（{3}），最大跌幅 {4} {5}{6}（{7}）。' -f `
-            $top.Label, (Format-Number -Value $top.Price), $top.Suffix, (Format-Pct -Value $top.ChangePct), `
-            $bot.Label, (Format-Number -Value $bot.Price), $bot.Suffix, (Format-Pct -Value $bot.ChangePct))
+        $topSign = if ([double]$top.ChangePct -gt 0) { '+' } else { '' }
+        $botSign = if ([double]$bot.ChangePct -gt 0) { '+' } else { '' }
+        add ('- **行情亮点**：本期涨幅最大的是 {0}（{1}{2}{3}），跌幅最大的是 {4}（{5}{6}{7}）。' -f `
+            $top.Label, $topSign, (Format-Number -Value $top.ChangePct), '%', `
+            $bot.Label, $botSign, (Format-Number -Value $bot.ChangePct), '%')
     }
 
-    # 3. 资讯条数
+    # 3. 本期一句话概括（按最大类别挑选代表）
     $newCount = 0
     foreach ($g in @($Result.Groups)) { $newCount += @($g.Items).Count }
     if ($newCount -gt 0) {
         $cats = @($Result.Groups | Select-Object -ExpandProperty Category -Unique)
-        add ('- **新增资讯**：本次采集到 {0} 条新增，覆盖 {1} 个类别。' -f $newCount, $cats.Count)
-    } else {
-        add '- **新增资讯**：本次窗口内无新增条目，可能是新闻空窗期或来源抓取失败。'
-    }
-
-    # 4. 头部 3 条最新消息（按时间倒序）
-    $allItems = @()
-    foreach ($g in @($Result.Groups)) { foreach ($it in @($g.Items)) { if ($it.Date) { $allItems += $it } } }
-    $allItems = $allItems | Sort-Object -Property Date -Descending
-    if ($allItems.Count -gt 0) {
-        add ''
-        add '**最新 3 条**：'
-        add ''
-        $top3 = $allItems | Select-Object -First 3
-        foreach ($it in $top3) {
-            $d = $it.Date.ToString('MM-dd HH:mm')
-            $title = ($it.Title -replace '[\r\n]+', ' ').Trim()
-            if ($it.Link) { add ('- `[{0}]` [{1}]({2})' -f $d, $title, $it.Link) }
-            else        { add ('- `[{0}]` {1}' -f $d, $title) }
+        # Find the category with the most items (more readable than nested Sort-Object).
+        $catTotals = @{}
+        foreach ($c in $cats) {
+            $sum = 0
+            foreach ($g in @($Result.Groups)) {
+                if ($g.Category -eq $c) { $sum += @($g.Items).Count }
+            }
+            $catTotals[$c] = $sum
         }
+        $topCat = ($catTotals.Keys | Sort-Object -Property @{ Expression = { $catTotals[$_] } } -Descending | Select-Object -First 1)
+        $topCatCount = $catTotals[$topCat]
+        $otherCats = @($cats | Where-Object { $_ -ne $topCat } | Select-Object -First 2)
+        $otherText = if ($otherCats.Count -gt 0) { '，其次为「' + ($otherCats -join '、') + '」等' } else { '' }
+        add ('- **内容侧重**：本期共收录 {0} 条资讯，重点集中在「{1}」（{2} 条）{3}。' -f $newCount, $topCat, $topCatCount, $otherText)
+    } else {
+        add '- **内容侧重**：本期窗口内未采集到新条目，可能是新闻空窗期或来源抓取失败。'
     }
     add ''
     # 结尾免责声明由 ConvertTo-BriefingHtml 的 .foot 渲染，避免重复
@@ -643,6 +648,83 @@ function Invoke-SynthesisGemini {
     return $resp.candidates[0].content.parts[0].text
 }
 
+function Invoke-Translation {
+    <#
+        Translates a batch of titles using an OpenAI-compatible chat API.
+        Used for the international briefing where English headlines need
+        to be readable in Chinese. Falls back to original titles if the
+        API fails (so the briefing still ships).
+    #>
+    param(
+        [Parameter(Mandatory)][string[]]$Titles,
+        [Parameter(Mandatory)][string]$ApiKey,
+        [Parameter(Mandatory)][string]$ApiUrl,
+        [string]$Model = 'deepseek-chat',
+        [string]$SourceLang = 'auto',
+        [string]$TargetLang = '简体中文'
+    )
+    if (-not $Titles -or $Titles.Count -eq 0) { return @() }
+
+    # Batch in chunks of 60 to stay well under token limits.
+    $chunks = @()
+    $chunkSize = 60
+    for ($i = 0; $i -lt $Titles.Count; $i += $chunkSize) {
+        $end = [Math]::Min($i + $chunkSize, $Titles.Count)
+        $chunks += ,(@($Titles[$i..($end - 1)]))
+    }
+
+    $allTranslations = @()
+    foreach ($chunk in $chunks) {
+        # Numbered list makes the model's output easy to parse back.
+        $numbered = ($chunk | ForEach-Object { '{0}. {1}' -f ($chunk.IndexOf($_) + 1), $_ }) -join "`n"
+        $prompt = @"
+请把以下新闻标题翻译成$TargetLang。要求：
+1. 一条一行，保持编号一致
+2. 只输出编号+翻译结果，不要任何解释、注释、原文
+3. 如果标题本身就是中文，原样保留并加 "(原文中文)"
+4. 人名、地名、机构名按通行中文译法
+
+$numbered
+"@
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $body = @{
+            model = $Model
+            max_tokens = 4096
+            temperature = 0.1
+            messages = @(@{ role = 'user'; content = $prompt })
+        }
+        $json = $body | ConvertTo-Json -Depth 8 -Compress
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+        $headers = @{
+            'Authorization' = "Bearer $ApiKey"
+            'Content-Type'  = 'application/json'
+        }
+        try {
+            $resp = Invoke-RestMethod -Uri $ApiUrl -Method Post `
+                -Headers $headers -Body $bytes -TimeoutSec 120
+            $text = $resp.choices[0].message.content
+            # Parse numbered output: "1. xxx\n2. yyy\n..."
+            $lines = ($text -split "[\r\n]+") | Where-Object { $_ -match '^\s*\d+\.' }
+            foreach ($line in $lines) {
+                if ($line -match '^\s*(\d+)\.\s*(.+)$') {
+                    $idx = [int]$matches[1] - 1
+                    $t = $matches[2].Trim()
+                    if ($idx -ge 0 -and $idx -lt $chunk.Count) {
+                        $allTranslations += @{ Index = ($allTranslations.Count); Original = $chunk[$idx]; Translated = $t }
+                    }
+                }
+            }
+        } catch {
+            Write-Log ("翻译失败（{0}/{1}）：{2}" -f $chunk.Count, $Titles.Count, $_.Exception.Message) 'WARN'
+            # Fallback: keep originals
+            foreach ($t in $chunk) {
+                $allTranslations += @{ Index = $allTranslations.Count; Original = $t; Translated = $t }
+            }
+        }
+    }
+    return $allTranslations
+}
+
 # --------------------------------------------------------------- deliver ----
 
 function Save-Archive {
@@ -663,7 +745,11 @@ function Publish-Briefing {
 
     # Build the compact digest here, once. Used as the entire body when there's no
     # model briefing, or as the appendix under one.
-    $Digest = Format-CompactDigest -Result $Result
+    # Per-category caps so a busy day doesn't drown the reader in one section.
+    $categoryLimits = @{
+        '欧美市场' = 5
+    }
+    $Digest = Format-CompactDigest -Result $Result -CategoryLimits $categoryLimits
 
     $cfg = $Result.Config
     $failed = @($Result.Status | Where-Object { $_.State -ne 'OK' })
@@ -759,7 +845,7 @@ function Publish-MergedBriefing {
             'finance'    { 'section section-finance' }
             default      { 'section' }
         }
-        $digest = Format-CompactDigest -Result $b.Result
+        $digest = Format-CompactDigest -Result $b.Result -CategoryLimits $categoryLimits
         $body = if ($b.BriefingText) {
             (ConvertFrom-MarkdownLite -Markdown $b.BriefingText) + '<hr>' + (ConvertFrom-MarkdownLite -Markdown $digest)
         } else {
@@ -869,6 +955,39 @@ foreach ($id in $briefs) {
 
     Write-Log ("开始采集：{0}" -f $cfg.title)
     $result = Invoke-Collect -Config $cfg -RunAt $RunAt -Meta $meta
+
+    # -- translate (international only, when a DeepSeek key is set) ----------
+    # Cheap: ~¥0.001/run for ~50 titles. Skipped if no key or no items.
+    if ($cfg.id -eq 'international' -and $env:DEEPSEEK_API_KEY -and -not $NoSynthesis) {
+        $allTitles = @()
+        $titleGroups = @()
+        foreach ($g in @($result.Groups)) {
+            foreach ($it in @($g.Items)) {
+                if ($it.Title) {
+                    $allTitles += $it.Title
+                    $titleGroups += @{ Group = $g; Item = $it }
+                }
+            }
+        }
+        if ($allTitles.Count -gt 0) {
+            Write-Log ("国际版块：调用 DeepSeek 翻译 {0} 条标题…" -f $allTitles.Count)
+            try {
+                $translations = Invoke-Translation -Titles $allTitles `
+                    -ApiKey $env:DEEPSEEK_API_KEY `
+                    -ApiUrl 'https://api.deepseek.com/chat/completions' `
+                    -Model 'deepseek-chat'
+                # Map translations back to items. If a translation is missing, keep the original.
+                foreach ($entry in $translations) {
+                    if ($entry.Index -lt $titleGroups.Count) {
+                        $entry.Item.TranslatedTitle = $entry.Translated
+                    }
+                }
+                Write-Log ("翻译完成：{0}/{1} 条" -f $translations.Count, $allTitles.Count)
+            } catch {
+                Write-Log ("国际版块翻译失败，保留英文标题：{0}" -f $_.Exception.Message) 'WARN'
+            }
+        }
+    }
 
     $promptPath = Join-Path $root ($cfg.promptFile -replace '/', '\')
     $prompt = if (Test-Path -LiteralPath $promptPath) { [System.IO.File]::ReadAllText($promptPath, [System.Text.Encoding]::UTF8) } else { '' }
