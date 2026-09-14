@@ -501,28 +501,8 @@ function Format-Pack {
         add ''
     }
 
-    add '## 二、抓取状态'
-    add ''
-    add '| 来源 | 类型 | 状态 | 新增条目 | 说明 |'
-    add '|---|---|---|---|---|'
-    foreach ($s in $Result.Status) {
-        add ('| {0} | {1} | {2} | {3} | {4} |' -f (Format-Cell $s.Name), $s.Kind, $s.State, $s.Count, (Format-Cell $s.Note))
-    }
-    add ''
-    $failed = @($Result.Status | Where-Object { $_.State -ne 'OK' })
-    if ($failed.Count -gt 0) {
-        if ($Human) {
-            add ('> 本次有 {0} 个来源抓取失败：{1}。这些领域的内容可能缺失。' -f $failed.Count, (($failed | ForEach-Object { $_.Name }) -join '、'))
-        } else {
-            add ('> **本次有 {0} 个来源抓取失败：{1}。** 相关领域如因此缺料，必须在简报中明确写出「本次未能获取×××」，不要用记忆或推测补齐。' -f $failed.Count, (($failed | ForEach-Object { $_.Name }) -join '、'))
-        }
-    } else {
-        add '> 全部来源抓取成功。'
-    }
-    add ''
-
     if ($Result.Datasets.Count -gt 0) {
-        add '## 三、官方数据集（最新数据行）'
+        add '## 二、官方数据集（最新数据行）'
         add ''
         foreach ($d in $Result.Datasets) {
             add ("### {0}" -f $d.Name)
@@ -538,8 +518,8 @@ function Format-Pack {
         }
     }
 
-    $n4 = if ($Result.Datasets.Count -gt 0) { '四' } else { '三' }
-    add ("## {0}、新增资讯条目" -f $n4)
+    $n3 = if ($Result.Datasets.Count -gt 0) { '三' } else { '二' }
+    add ("## {0}、新增资讯条目" -f $n3)
     add ''
     if ($Result.Groups.Count -eq 0) {
         add '**本次窗口内没有采集到任何新增条目。**'
