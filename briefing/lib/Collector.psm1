@@ -582,8 +582,6 @@ function ConvertTo-SummaryBox {
 
     $sb = New-Object System.Text.StringBuilder
     [void]$sb.AppendLine('<div class="summary">')
-    [void]$sb.AppendLine('<h2>📌 今日要点</h2>')
-    [void]$sb.AppendLine('<p class="summary-note">以下 3 条为本期内容的自动总结（不依赖 AI 模型）。</p>')
     [void]$sb.AppendLine('<ul>')
 
     # 1. 数据健康
@@ -707,23 +705,23 @@ blockquote{margin:8px 0;padding:8px 12px;background:#f7f9fc;border-left:3px soli
 .section-international code{background:#e6f5ec;color:#1a6b3a}
 
 /* ── News item cards ── */
-.news-item{margin:14px 0;padding:14px 18px 12px;background:#fcfcfd;border:1px solid #e6e9ee;border-left:4px solid #c8d2e0;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,0.03);transition:border-color .15s}
-.news-item:hover{border-left-color:#1a56c4}
-.news-item .news-title{font-size:16px;margin:0 0 8px;padding:0;color:#1a3f7a;border:none;font-weight:700}
+.news-item{margin:16px 0;padding:16px 20px 14px;background:#fcfcfd;border:1px solid #e0e4ea;border-left:5px solid #c8d2e0;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.04);transition:border-color .15s}
+.news-item:hover{border-left-color:#1a56c4;box-shadow:0 3px 10px rgba(0,0,0,0.07)}
+.news-item .news-title{font-size:17px;margin:0 0 10px;padding:0;color:#1a3f7a;border:none;font-weight:800;letter-spacing:0.3px}
 .news-item p{margin:0 0 6px;line-height:1.65}
 .news-item p:last-child{margin-bottom:0}
 .news-item a{font-weight:500;font-size:13px}
-.news-item ul{margin:4px 0 6px 0;padding-left:18px}
-.news-item li{margin:2px 0;font-size:14px;line-height:1.6}
-.section-property .news-item{background:#fffaf2;border-color:#f0d8a8;border-left-color:#e0a060}
-.section-property .news-item:hover{border-left-color:#b35900}
-.section-property .news-item .news-title{color:#7a4a00}
-.section-finance .news-item{background:#f7faff;border-color:#cfdcef;border-left-color:#7ba0d8}
-.section-finance .news-item:hover{border-left-color:#1a56c4}
-.section-finance .news-item .news-title{color:#1a3f7a}
-.section-international .news-item{background:#f4faf6;border-color:#b8d8c0;border-left-color:#7ab87a}
-.section-international .news-item:hover{border-left-color:#2d8a4e}
-.section-international .news-item .news-title{color:#1a6b3a}
+.news-item ul{margin:6px 0 6px 0;padding-left:20px}
+.news-item li{margin:3px 0;font-size:14px;line-height:1.6}
+.section-property .news-item{background:#fffaf2;border-color:#e8c88a;border-left-color:#d4880a}
+.section-property .news-item:hover{border-left-color:#b35900;box-shadow:0 3px 10px rgba(180,89,0,0.08)}
+.section-property .news-item .news-title{color:#9a4a00}
+.section-finance .news-item{background:#f5f8ff;border-color:#b8c8e8;border-left-color:#3a7ad8}
+.section-finance .news-item:hover{border-left-color:#1a56c4;box-shadow:0 3px 10px rgba(26,86,196,0.08)}
+.section-finance .news-item .news-title{color:#1a4a9a}
+.section-international .news-item{background:#f2faf5;border-color:#a8d4b8;border-left-color:#3a9a5a}
+.section-international .news-item:hover{border-left-color:#2d8a4e;box-shadow:0 3px 10px rgba(45,138,78,0.08)}
+.section-international .news-item .news-title{color:#1a6a3a}
 
 /* ── Highlight numbers ── */
 .news-item strong{color:#c2410c;font-weight:700}
@@ -793,21 +791,21 @@ details summary:hover{color:#1a56c4}
  .section-international tr:nth-child(even) td{background:#152820}
  .section-international blockquote{background:#152820;color:#90c8a0;border-left-color:#3d6a50}
  .section-international code{background:#1c2a20;color:#6aba8a}
- .news-item{background:#1c1f25;border-color:#2a2f38;border-left-color:#3d4654;color:#cbd2db}
- .news-item:hover{border-left-color:#6a8df0}
- .news-item .news-title{color:#cbd2db}
+ .news-item{background:#1c1f25;border-color:#2a2f38;border-left-color:#3d4654;color:#cbd2db;box-shadow:0 2px 6px rgba(0,0,0,0.2)}
+ .news-item:hover{border-left-color:#6a8df0;box-shadow:0 3px 10px rgba(100,140,255,0.1)}
+ .news-item .news-title{color:#e0e8f4}
  .news-item strong{color:#f0a070}
- .section-property .news-item{background:#241808;border-color:#3a2810;border-left-color:#5a4020}
- .section-property .news-item:hover{border-left-color:#b07030}
- .section-property .news-item .news-title{color:#f0c380}
+ .section-property .news-item{background:#241808;border-color:#4a3520;border-left-color:#6a5030}
+ .section-property .news-item:hover{border-left-color:#b07030;box-shadow:0 3px 10px rgba(180,112,48,0.1)}
+ .section-property .news-item .news-title{color:#f0d090}
  .section-property .news-item strong{color:#f0c380}
  .section-finance .news-item{background:#152030;border-color:#2d4060;border-left-color:#3d6090}
- .section-finance .news-item:hover{border-left-color:#6a8df0}
- .section-finance .news-item .news-title{color:#8fb6f0}
+ .section-finance .news-item:hover{border-left-color:#6a8df0;box-shadow:0 3px 10px rgba(106,141,240,0.1)}
+ .section-finance .news-item .news-title{color:#a0c8f0}
  .section-finance .news-item strong{color:#8fb6f0}
- .section-international .news-item{background:#152820;border-color:#2d5a3a;border-left-color:#3d6a50}
- .section-international .news-item:hover{border-left-color:#6aba8a}
- .section-international .news-item .news-title{color:#6aba8a}
+ .section-international .news-item{background:#152820;border-color:#2d5a3a;border-left-color:#3d7a50}
+ .section-international .news-item:hover{border-left-color:#6aba8a;box-shadow:0 3px 10px rgba(106,186,138,0.1)}
+ .section-international .news-item .news-title{color:#80d0a0}
  .section-international .news-item strong{color:#6aba8a}
  .summary{background:linear-gradient(135deg,#1c2330 0%,#1a2030 100%);border-color:#2d4a7a;box-shadow:0 1px 3px rgba(100,150,255,0.1)}
  .summary h2{color:#8fb6f0;border-bottom-color:#2d4a7a}
