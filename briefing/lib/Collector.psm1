@@ -382,7 +382,7 @@ function ConvertFrom-MarkdownLite {
 
     $sb = New-Object System.Text.StringBuilder
     $lines = @($Markdown -split "`r?`n")
-    $inList = $false; $inCode = $false; $inTable = $false
+    $inList = $false; $inCode = $false; $inTable = $false; $inCard = $false
 
     foreach ($raw in $lines) {
         $line = $raw.TrimEnd()
@@ -407,6 +407,7 @@ function ConvertFrom-MarkdownLite {
         if ($line.Trim().Length -eq 0) {
             if ($inList) { [void]$sb.AppendLine('</ul>'); $inList = $false }
             if ($inTable) { [void]$sb.AppendLine('</tbody></table>'); $inTable = $false }
+            if ($inCard) { [void]$sb.AppendLine('</div>'); $inCard = $false }
             continue
         }
 
@@ -434,8 +435,16 @@ function ConvertFrom-MarkdownLite {
         $h = [regex]::Match($line, '^(#{1,4})\s+(.*)$')
         if ($h.Success) {
             if ($inList) { [void]$sb.AppendLine('</ul>'); $inList = $false }
+            if ($inCard) { [void]$sb.AppendLine('</div>'); $inCard = $false }
             $lvl = $h.Groups[1].Value.Length
-            [void]$sb.AppendLine("<h$lvl>" + (Convert-Inline $h.Groups[2].Value) + "</h$lvl>")
+            $headingContent = Convert-Inline $h.Groups[2].Value
+            # Wrap numbered item headings (### ① / ### ② ... ### ⑦) in a card container
+            if ($lvl -eq 3 -and $h.Groups[2].Value -match '^[①②③④⑤⑥⑦⑧]') {
+                [void]$sb.AppendLine("<div class=`"news-item`"><h3 class=`"news-title`">$headingContent</h3>")
+                $inCard = $true
+            } else {
+                [void]$sb.AppendLine("<h$lvl>$headingContent</h$lvl>")
+            }
             continue
         }
 
@@ -465,6 +474,7 @@ function ConvertFrom-MarkdownLite {
     if ($inCode) { [void]$sb.AppendLine('</pre>') }
     if ($inList) { [void]$sb.AppendLine('</ul>') }
     if ($inTable) { [void]$sb.AppendLine('</tbody></table>') }
+    if ($inCard) { [void]$sb.AppendLine('</div>') }
     return $sb.ToString()
 }
 
@@ -683,6 +693,26 @@ details[open]{padding-bottom:16px}
 .section-finance tr:nth-child(even) td{background:#f5f8ff}
 .section-finance blockquote{background:#eaf2ff;border-left-color:#7ba0d8;color:#1a3f7a}
 .section-finance code{background:#e6efff;color:#1a3f7a}
+
+/* News item cards: each numbered item (### ① / ### ② ...) gets a colored card */
+.news-item{margin:18px 0;padding:16px 20px 14px;background:#fcfcfd;border:1px solid #e6e9ee;border-left:5px solid #c8d2e0;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,0.03);transition:border-color .15s}
+.news-item:hover{border-left-color:#1a56c4}
+.news-item .news-title{font-size:17px;margin:0 0 10px;padding:0;color:#1a3f7a;border:none;font-weight:700}
+.news-item p{margin:0 0 8px;line-height:1.75}
+.news-item p:last-child{margin-bottom:0}
+.news-item a{font-weight:500}
+.section-property .news-item{background:#fffaf2;border-color:#f0d8a8;border-left-color:#e0a060}
+.section-property .news-item:hover{border-left-color:#b35900}
+.section-property .news-item .news-title{color:#7a4a00}
+.section-finance .news-item{background:#f7faff;border-color:#cfdcef;border-left-color:#7ba0d8}
+.section-finance .news-item:hover{border-left-color:#1a56c4}
+.section-finance .news-item .news-title{color:#1a3f7a}
+hr.section-sep{border:0;border-top:2px dashed #cfdcef;margin:30px 0}
+
+/* Highlight numbers in news-item body */
+.news-item strong{color:#c2410c;font-weight:700}
+.section-property .news-item strong{color:#b35900}
+.section-finance .news-item strong{color:#1a56c4}
 @media(prefers-color-scheme:dark){
  body{background:#16181c;color:#dfe3e8}
  h3{color:#8fb6f0} h4{color:#aaa}
@@ -718,7 +748,21 @@ details[open]{padding-bottom:16px}
   .section-finance th{background:#1c2a40;color:#8fb6f0}
   .section-finance tr:nth-child(even) td{background:#152030}
   .section-finance blockquote{background:#152030;color:#b0c8e0;border-left-color:#3d6090}
-  .section-finance code{background:#1c2a40;color:#9cc4ee}}
+  .section-finance code{background:#1c2a40;color:#9cc4ee}
+  /* Dark-mode news-item cards */
+  .news-item{background:#1c1f25;border-color:#2a2f38;border-left-color:#3d4654;color:#cbd2db}
+  .news-item:hover{border-left-color:#6a8df0}
+  .news-item .news-title{color:#cbd2db}
+  .news-item strong{color:#f0a070}
+  .section-property .news-item{background:#241808;border-color:#3a2810;border-left-color:#5a4020}
+  .section-property .news-item:hover{border-left-color:#b07030}
+  .section-property .news-item .news-title{color:#f0c380}
+  .section-property .news-item strong{color:#f0c380}
+  .section-finance .news-item{background:#152030;border-color:#2d4060;border-left-color:#3d6090}
+  .section-finance .news-item:hover{border-left-color:#6a8df0}
+  .section-finance .news-item .news-title{color:#8fb6f0}
+  .section-finance .news-item strong{color:#8fb6f0}
+  hr.section-sep{border-top-color:#3d4654}}
 '@
     $head = @"
 <!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
