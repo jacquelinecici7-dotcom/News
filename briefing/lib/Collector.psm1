@@ -569,50 +569,50 @@ function ConvertTo-SummaryBox {
     $allItems = @()
     foreach ($g in @($Result.Groups)) { foreach ($it in @($g.Items)) { if ($it.Date) { $allItems += $it } } }
     $allItems = $allItems | Sort-Object -Property Date -Descending
-    $top3 = $allItems | Select-Object -First 3
 
     $sb = New-Object System.Text.StringBuilder
     [void]$sb.AppendLine('<div class="summary">')
     [void]$sb.AppendLine('<h2>📌 今日要点</h2>')
+    [void]$sb.AppendLine('<p class="summary-note">以下 3 条为本期内容的自动总结（不依赖 AI 模型）。</p>')
     [void]$sb.AppendLine('<ul>')
 
+    # 1. 数据健康
     if ($okCount -eq $totalCount) {
-        [void]$sb.AppendLine("<li><strong>数据健康</strong>：本次 $totalCount 个来源全部抓取成功，可放心引用。</li>")
+        [void]$sb.AppendLine('<li><strong>数据健康</strong>：本期所有数据源均正常抓取，资料完整。</li>')
+    } elseif ($okCount -eq 0) {
+        [void]$sb.AppendLine("<li><strong>数据健康</strong>：本期所有数据源均抓取失败（$failedNames），下方内容可能缺失或不可靠，建议参考其它渠道。</li>")
     } else {
-        $f = ($totalCount - $okCount)
-        [void]$sb.AppendLine("<li><strong>数据健康</strong>：本次 $totalCount 个来源中有 $f 个失败（$failedNames），相关内容可能缺失。</li>")
+        [void]$sb.AppendLine("<li><strong>数据健康</strong>：本期 $okCount/$totalCount 个数据源正常，缺失：$failedNames。</li>")
     }
 
+    # 2. 行情亮点
     if ($movers.Count -gt 0) {
         $top = $movers[0]; $bot = $movers[-1]
         $topPct = if ($null -ne $top.ChangePct) { ('{0}{1}%' -f $(if ([double]$top.ChangePct -gt 0) { '+' } else { '' }), ([double]$top.ChangePct).ToString('N2')) } else { 'n/a' }
         $botPct = if ($null -ne $bot.ChangePct) { ('{0}{1}%' -f $(if ([double]$bot.ChangePct -gt 0) { '+' } else { '' }), ([double]$bot.ChangePct).ToString('N2')) } else { 'n/a' }
-        $topPx = $top.Price.ToString('N2')
-        $botPx = $bot.Price.ToString('N2')
-        [void]$sb.AppendLine("<li><strong>行情异动</strong>：最大涨幅 $($top.Label) $($topPx)$($top.Suffix)（$topPct），最大跌幅 $($bot.Label) $($botPx)$($bot.Suffix)（$botPct）。</li>")
+        [void]$sb.AppendLine("<li><strong>行情亮点</strong>：本期涨幅最大的是 $($top.Label)（$topPct），跌幅最大的是 $($bot.Label)（$botPct）。</li>")
     }
 
+    # 3. 内容侧重
     if ($newCount -gt 0) {
-        [void]$sb.AppendLine("<li><strong>新增资讯</strong>：$newCount 条，覆盖 $($cats.Count) 个类别（$($cats -join '、')）。</li>")
+        # Find the category with the most items (avoids nested Sort-Object).
+        $catTotals = @{}
+        foreach ($c in $cats) {
+            $sum = 0
+            foreach ($g in @($Result.Groups)) {
+                if ($g.Category -eq $c) { $sum += @($g.Items).Count }
+            }
+            $catTotals[$c] = $sum
+        }
+        $topCat = ($catTotals.Keys | Sort-Object -Property @{ Expression = { $catTotals[$_] } } -Descending | Select-Object -First 1)
+        $topCatCount = $catTotals[$topCat]
+        $otherCats = @($cats | Where-Object { $_ -ne $topCat } | Select-Object -First 2)
+        $otherText = if ($otherCats.Count -gt 0) { "，其次为「$($otherCats -join '、')」等" } else { '' }
+        [void]$sb.AppendLine("<li><strong>内容侧重</strong>：本期共收录 $newCount 条资讯，重点集中在「$topCat」（$topCatCount 条）$otherText。</li>")
     } else {
-        [void]$sb.AppendLine('<li><strong>新增资讯</strong>：本次窗口内无新增条目，可能是新闻空窗期或来源抓取失败。</li>')
+        [void]$sb.AppendLine('<li><strong>内容侧重</strong>：本期窗口内未采集到新条目，可能是新闻空窗期或来源抓取失败。</li>')
     }
     [void]$sb.AppendLine('</ul>')
-
-    if ($top3.Count -gt 0) {
-        [void]$sb.AppendLine('<div class="latest"><strong>最新 3 条</strong>：<ul>')
-        foreach ($it in $top3) {
-            $d = $it.Date.ToString('MM-dd HH:mm')
-            $title = ($it.Title -replace '[\r\n]+', ' ').Trim()
-            $titleEnc = [System.Net.WebUtility]::HtmlEncode($title)
-            if ($it.Link) {
-                [void]$sb.AppendLine("<li><code>[$d]</code> <a href=`"$($it.Link)`" target=`"_blank`">$titleEnc</a></li>")
-            } else {
-                [void]$sb.AppendLine("<li><code>[$d]</code> $titleEnc</li>")
-            }
-        }
-        [void]$sb.AppendLine('</ul></div>')
-    }
     [void]$sb.AppendLine('</div>')
     return $sb.ToString()
 }
