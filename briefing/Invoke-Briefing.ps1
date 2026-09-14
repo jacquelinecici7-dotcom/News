@@ -361,7 +361,7 @@ function Format-CompactDigest {
             if ($items.Count -eq 0) { continue }
             # Sort newest first so the cap keeps the freshest, not the oldest.
             $sorted = @($items | Sort-Object -Property Date -Descending)
-            $cap = if ($CategoryLimits.ContainsKey($cat)) { $CategoryLimits[$cat] } else { $maxPerCat }
+            $cap = if ($CategoryLimits -and $CategoryLimits.ContainsKey($cat)) { $CategoryLimits[$cat] } else { $maxPerCat }
             $shown = $sorted | Select-Object -First $cap
             $total = $items.Count
             add ("### {0}（{1} 条 · 显示最新 {2} 条）" -f $cat, $total, $shown.Count)
@@ -960,12 +960,15 @@ foreach ($id in $briefs) {
     # Cheap: ~¥0.001/run for ~50 titles. Skipped if no key or no items.
     if ($cfg.id -eq 'international' -and $env:DEEPSEEK_API_KEY -and -not $NoSynthesis) {
         $allTitles = @()
-        $titleGroups = @()
-        foreach ($g in @($result.Groups)) {
-            foreach ($it in @($g.Items)) {
+        # Track each (group_index, item_index_within_group) so we can patch back.
+        $titlePositions = @()
+        foreach ($gi in 0..($result.Groups.Count - 1)) {
+            $g = $result.Groups[$gi]
+            for ($ii = 0; $ii -lt $g.Items.Count; $ii++) {
+                $it = $g.Items[$ii]
                 if ($it.Title) {
                     $allTitles += $it.Title
-                    $titleGroups += @{ Group = $g; Item = $it }
+                    $titlePositions += @{ GroupIndex = $gi; ItemIndex = $ii }
                 }
             }
         }
@@ -976,11 +979,35 @@ foreach ($id in $briefs) {
                     -ApiKey $env:DEEPSEEK_API_KEY `
                     -ApiUrl 'https://api.deepseek.com/chat/completions' `
                     -Model 'deepseek-chat'
-                # Map translations back to items. If a translation is missing, keep the original.
+                # Map translations back by reconstructing the items array
+                # (Items is a PSCustomObject property — can't mutate fields in place).
+                $byGroup = @{}
                 foreach ($entry in $translations) {
-                    if ($entry.Index -lt $titleGroups.Count) {
-                        $entry.Item.TranslatedTitle = $entry.Translated
+                    if ($entry.Index -lt $titlePositions.Count) {
+                        $pos = $titlePositions[$entry.Index]
+                        $key = $pos.GroupIndex
+                        if (-not $byGroup.ContainsKey($key)) { $byGroup[$key] = @{} }
+                        $byGroup[$key][$pos.ItemIndex] = $entry.Translated
                     }
+                }
+                foreach ($gi in $byGroup.Keys) {
+                    $g = $result.Groups[$gi]
+                    $newItems = @()
+                    for ($ii = 0; $ii -lt $g.Items.Count; $ii++) {
+                        $it = $g.Items[$ii]
+                        if ($byGroup[$gi].ContainsKey($ii)) {
+                            # Recreate as plain hashtable so we can attach TranslatedTitle.
+                            $newIt = [ordered]@{}
+                            foreach ($prop in $it.PSObject.Properties) {
+                                $newIt[$prop.Name] = $prop.Value
+                            }
+                            $newIt['TranslatedTitle'] = $byGroup[$gi][$ii]
+                            $newItems += [pscustomobject]$newIt
+                        } else {
+                            $newItems += $it
+                        }
+                    }
+                    $g.Items = $newItems
                 }
                 Write-Log ("翻译完成：{0}/{1} 条" -f $translations.Count, $allTitles.Count)
             } catch {
