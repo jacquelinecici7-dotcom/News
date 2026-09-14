@@ -851,9 +851,16 @@ function Publish-MergedBriefing {
 
         # Map brief id to a CSS class so each section gets its own color theme.
         $cls = switch ($b.Result.Config.id) {
-            'hkproperty' { 'section section-property' }
-            'finance'    { 'section section-finance' }
-            default      { 'section' }
+            'hkproperty'    { 'section section-property' }
+            'finance'       { 'section section-finance' }
+            'international' { 'section section-international' }
+            default         { 'section' }
+        }
+        $tabId = switch ($b.Result.Config.id) {
+            'hkproperty'    { 'property' }
+            'finance'       { 'finance' }
+            'international' { 'international' }
+            default         { 'general' }
         }
         $digest = Format-CompactDigest -Result $b.Result -CategoryLimits $categoryLimits
         $body = if ($b.BriefingText) {
@@ -861,7 +868,7 @@ function Publish-MergedBriefing {
         } else {
             ConvertFrom-MarkdownLite -Markdown $digest
         }
-        [void]$sectionHtmls.Add(("<div class=`"{0}`">" -f $cls) + $body + '</div>')
+        [void]$sectionHtmls.Add(("<div class=`"tab-panel{0}`" id=`"tab-{1}`"><div class=`"{2}`">" -f $(if ($tabId -eq 'property') { ' active' } else { '' }), $tabId, $cls) + $body + '</div></div>')
     }
 
     # Aggregated banner: any chronic failure surfaces "needs repair"; failed sources aggregate.
@@ -899,7 +906,7 @@ function Publish-MergedBriefing {
     }
 
     $html = ConvertTo-BriefingHtml -Title ('每日资讯 · {0}' -f $combined.RunAt.ToString('yyyy年M月d日')) `
-                                   -BodyHtml ([string]::Join('<hr style="margin:40px 0;border:0;border-top:2px dashed #cfdcef">', $sectionHtmls.ToArray())) `
+                                   -BodyHtml ([string]::Join('', $sectionHtmls.ToArray())) `
                                    -Banner $banner `
                                    -SummaryBox (ConvertTo-SummaryBox -Result $combined)
 
