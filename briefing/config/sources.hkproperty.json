@@ -50,7 +50,7 @@
       "hrefFilter": "\\.pdf$|statistics",
       "dateFromHref": "",
       "include": "",
-      "max": 12
+      "max": 5
     },
     {
       "name": "土地注册处·每月统计",
@@ -59,7 +59,7 @@
       "hrefFilter": "monthly|\\.pdf$|statistic",
       "dateFromHref": "",
       "include": "",
-      "max": 12
+      "max": 5
     }
   ],
 
